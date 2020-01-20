@@ -119,5 +119,5 @@ If you redistribute modified sources, we would appreciate that you include in
 the file ChangeLog history information documenting your changes.  Please read
 the FAQ for more information on the distribution of modified source versions.
 
-[appveyor-shield]: https://ci.appveyor.com/api/projects/status/4sd5umsepylcxqw5?svg=true
-[appveyor-link]: https://ci.appveyor.com/project/ProgramMax/zlib/branch/master
+[appveyor-shield]: https://ci.appveyor.com/api/projects/status/8m7p0nbuy8tvkqv6/branch/add-appveyor?svg=true
+[appveyor-link]: https://ci.appveyor.com/project/ProgramMax/zlib/branch/add-appveyor
