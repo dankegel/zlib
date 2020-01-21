@@ -15,7 +15,6 @@ before_build:
 
 build:
   project: "zlib.sln"
-  parallel: true
 
 platform:
   - x64
@@ -23,7 +22,8 @@ configuration:
   - Debug
   - Release
 
-# test_script:
+test_script:
 #  - "%APPVEYOR_BUILD_FOLDER%/contrib/vstudio/vc14/%PLATFORM%/TestZlib%CONFIGURATION%/testzlib.exe"
-#  - ps: $wc = New-Object 'System.Net.WebClient'
-#  - ps: $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\tooling\appveyor\junit-results.xml))
+  - "%APPVEYOR_BUILD_FOLDER%/%CONFIGURATION%/example.exe"
+  - ps: $wc = New-Object 'System.Net.WebClient'
+  - ps: $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\tooling\appveyor\junit-results.xml))
