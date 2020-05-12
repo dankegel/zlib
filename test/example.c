@@ -175,6 +175,7 @@ test_result test_gzio(fname, uncompr, uncomprLen)
 
     file = gzopen(fname, "wb");
     if (file == NULL) {
+        // TODO(cblume): update all these
         fprintf(stderr, "gzopen error\n");
         exit(1);
     }
