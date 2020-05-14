@@ -28,6 +28,7 @@ typedef struct test_result_s {
                           FAILED_WITH_ERROR_CODE, or
                           FAILED_WITHOUT_ERROR_CODE*/
     int           err;     /* error code if success is FAILED_WITH_ERROR_CODE */
+    int           line;  /* line number of failure */
     z_const char* message;
     z_const char* extended_message;
 } test_result;
@@ -43,6 +44,7 @@ typedef struct test_result_s {
 #define RETURN_ON_ERROR_WITH_MESSAGE(_err, _msg, _result) { \
     if (_err != Z_OK) { \
         result.err = _err; \
+        result.line = __LINE__; \
         result.result = FAILED_WITH_ERROR_CODE; \
         result.message = _msg; \
         return _result; \
@@ -52,15 +54,16 @@ typedef struct test_result_s {
 #define RETURN_WITH_MESSAGE(msg, result) { \
     result.result = FAILED_WITHOUT_ERROR_CODE; \
     result.message = msg; \
+    result.line = __LINE__; \
     return result; \
 }
 
+#define TEST_FILENAME "test/example.c"
+
 #define HANDLE_TEST_RESULTS(output, result, testcase_name, is_junit_output) { \
-    if (is_junit_output) { \
-        fprintf(output, "\t\t<testcase name=\"%s\">", testcase_name); \
-    } \
     if (result.result == FAILED_WITH_ERROR_CODE) { \
         if (is_junit_output) { \
+            fprintf(output, "\t\t<testcase file=\"%s\" line=\"%d\" name=\"%s\">", TEST_FILENAME, result.line, testcase_name); \
             fprintf(output, "\n\t\t\t<failure>%s error: %d</failure>\n\t\t", result.message, result.err); \
 		} else { \
             fprintf(stderr, "%s error: %d\n", result.message, result.err); \
@@ -68,13 +71,16 @@ typedef struct test_result_s {
 		} \
     } else if (result.result == FAILED_WITHOUT_ERROR_CODE) { \
         if (is_junit_output) { \
+            fprintf(output, "\t\t<testcase file=\"%s\" line=\"%d\" name=\"%s\">", TEST_FILENAME, result.line, testcase_name); \
             fprintf(output, "\n\t\t\t<failure>%s</failure>\n\t\t", result.message); \
 		} else { \
             fprintf(stderr, "%s", result.message); \
             exit(1); \
         } \
     } else { \
-        if (!is_junit_output) { \
+        if (is_junit_output) { \
+            fprintf(output, "\t\t<testcase name=\"%s\">", testcase_name); \
+        } else { \
             if (result.message != NULL) { \
                 if (result.extended_message != NULL) { \
                     fprintf(output, "%s %s", result.message, result.extended_message); \
@@ -170,6 +176,7 @@ test_result test_compress(compr, comprLen, uncompr, uncomprLen)
         result.result = SUCCESSFUL;
         result.message = "uncompress(): %s\n";
         result.extended_message = (char*)uncompr;
+        result.line = 0;
         return result;
     }
 }
@@ -263,6 +270,7 @@ test_result test_gzio(fname, uncompr, uncomprLen)
 
     result.result = SUCCESSFUL;
     result.message = NULL;
+    result.line = 0;
     return result;
 #endif
 }
@@ -309,6 +317,7 @@ test_result test_deflate(compr, comprLen)
 
     result.result = SUCCESSFUL;
     result.message = NULL;
+    result.line = 0;
     return result;
 }
 
@@ -352,6 +361,7 @@ test_result test_inflate(compr, comprLen, uncompr, uncomprLen)
         result.result = SUCCESSFUL;
         result.message = "inflate(): %s\n";
         result.extended_message = (char*)uncompr;
+        result.line = 0;
         return result;
     }
 }
@@ -411,6 +421,7 @@ test_result test_large_deflate(compr, comprLen, uncompr, uncomprLen)
 
     result.result = SUCCESSFUL;
     result.message = NULL;
+    result.line = 0;
     return result;
 }
 
@@ -456,6 +467,7 @@ test_result test_large_inflate(compr, comprLen, uncompr, uncomprLen)
         result.result = SUCCESSFUL;
         result.message = "large_inflate(): OK\n";
         result.extended_message = NULL;
+        result.line = 0;
         return result;
     }
 }
@@ -500,6 +512,7 @@ test_result test_flush(compr, comprLen)
 
     result.result = SUCCESSFUL;
     result.message = NULL;
+    result.line = 0;
     return result;
 }
 
@@ -546,6 +559,7 @@ test_result test_sync(compr, comprLen, uncompr, uncomprLen)
     result.result = SUCCESSFUL;
     result.message = "after inflateSync(): hel%s\n";
     result.extended_message = (char*)uncompr;
+    result.line = 0;
     return result;
 }
 
@@ -587,6 +601,7 @@ test_result test_dict_deflate(compr, comprLen)
 
     result.result = SUCCESSFUL;
     result.message = NULL;
+    result.line = 0;
     return result;
 }
 
@@ -639,6 +654,7 @@ test_result test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
         result.result = SUCCESSFUL;
         result.message = "inflate with dictionary: %s\n";
         result.extended_message = (char*)uncompr;
+        result.line = 0;
         return result;
     }
 }
