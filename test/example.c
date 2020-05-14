@@ -644,7 +644,7 @@ test_result test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
 }
 
 /* ===========================================================================
- * Usage:  example [--appveyor] [output.gz  [input.gz]]
+ * Usage:  example [--junit] [output.gz  [input.gz]]
  */
 
 int main(argc, argv)
@@ -685,7 +685,7 @@ int main(argc, argv)
     (void)argv;
 #else
     if (argc > 1) {
-        if (strcmp(argv[1], "--appveyor") == 0) {
+        if (strcmp(argv[1], "--junit") == 0) {
             is_junit_output = 1;
 
             output = fopen("tooling/appveyor/junit-results.xml", "w+");
