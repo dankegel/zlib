@@ -695,7 +695,7 @@ int main(argc, argv)
             }
             fprintf(output, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
             fprintf(output, "<testsuites>\n");
-            fprintf(output, "\t<testsuite name=\"zlip example suite\">\n");
+            fprintf(output, "\t<testsuite name=\"zlib example suite\">\n");
         }
     }
 
