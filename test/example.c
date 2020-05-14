@@ -684,8 +684,8 @@ int main(argc, argv)
     (void)argc;
     (void)argv;
 #else
-    //if (argc > 1) {
-        //if (strcmp(argv[1], "--appveyor") == 0) {
+    if (argc > 1) {
+        if (strcmp(argv[1], "--appveyor") == 0) {
             is_junit_output = 1;
 
             output = fopen("tooling/appveyor/junit-results.xml", "w+");
@@ -696,8 +696,8 @@ int main(argc, argv)
             fprintf(output, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
             fprintf(output, "<testsuites>\n");
             fprintf(output, "\t<testsuite name=\"zlip example suite\">\n");
-        //}
-    //}
+        }
+    }
 
     result = test_compress(compr, comprLen, uncompr, uncomprLen);
     HANDLE_TEST_RESULTS(output, result, "compress", is_junit_output);
