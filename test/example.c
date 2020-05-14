@@ -70,16 +70,16 @@ typedef struct test_result_s {
         if (is_junit_output) { \
             fprintf(output, "\n\t\t\t<failure>%s</failure>\n\t\t", result.message); \
 		} else { \
-            fprintf(stderr, result.message); \
+            fprintf(stderr, "%s", result.message); \
             exit(1); \
         } \
     } else { \
         if (!is_junit_output) { \
             if (result.message != NULL) { \
                 if (result.extended_message != NULL) { \
-                    fprintf(output, result.message, result.extended_message); \
+                    fprintf(output, "%s %s", result.message, result.extended_message); \
                 } else { \
-                    fprintf(output, result.message); \
+                    fprintf(output, "%s", result.message); \
                 } \
             } \
         } \
@@ -644,7 +644,7 @@ test_result test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
 }
 
 /* ===========================================================================
- * Usage:  example [--junit] [output.gz  [input.gz]]
+ * Usage:  example [--junit results.xml] [output.gz  [input.gz]]
  */
 
 int main(argc, argv)
@@ -684,11 +684,18 @@ int main(argc, argv)
     (void)argc;
     (void)argv;
 #else
+	// TODO(cblume): Allow both sets of flags to coexist.
+	int next_argv_index = 1;
     if (argc > 1) {
         if (strcmp(argv[1], "--junit") == 0) {
+            if (argc <= 2) {
+                fprintf(stderr, "--junit flag requires an output file parameter, like --junit output.xml");
+				exit(1);
+            }
+            next_argv_index += 2;
             is_junit_output = 1;
 
-            output = fopen("tooling/appveyor/junit-results.xml", "w+");
+            output = fopen(argv[2], "w+");
             if (!output) {
                 fprintf(stderr, "Could not open junit file");
                 exit(1);
@@ -702,7 +709,7 @@ int main(argc, argv)
     result = test_compress(compr, comprLen, uncompr, uncomprLen);
     HANDLE_TEST_RESULTS(output, result, "compress", is_junit_output);
 	
-    result = test_gzio((argc > 1 ? argv[1] : TESTFILE),
+    result = test_gzio((argc > next_argv_index ? argv[next_argv_index++] : TESTFILE),
                        uncompr, uncomprLen);
     HANDLE_TEST_RESULTS(output, result, "gzio", is_junit_output);
 #endif
