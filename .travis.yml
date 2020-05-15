@@ -7,9 +7,9 @@ arch:
   - ppc64le
   - s390x
 
-script:
-  - dpkg-query -l
-  - cc --version
-  - cat /proc/cpuinfo
+before_install:
+  - sudo apt-get update
   - sudo apt-get install -y ninja-build
+script:
+  - tail /proc/cpuinfo
   - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V

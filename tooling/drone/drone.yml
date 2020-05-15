@@ -12,6 +12,6 @@ steps:
       - apt-get -yq update
       - apt-get install --no-install-recommends -y cmake gcc libc6-dev ninja-build
       - uname -m
-      - cat /proc/cpuinfo
+      - tail /proc/cpuinfo
       - cc --version
       - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V
