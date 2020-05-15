@@ -1,0 +1,15 @@
+language: c
+os: linux
+dist: bionic
+sudo: required
+
+arch:
+  - ppc64le
+  - s390x
+
+script:
+  - dpkg-query -l
+  - cc --version
+  - cat /proc/cpuinfo
+  - sudo apt-get install -y ninja-build
+  - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V
