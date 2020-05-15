@@ -59,11 +59,18 @@ typedef struct test_result_s {
 }
 
 #define TEST_FILENAME "test/example.c"
+/* Provide some clue in the github interface which executable failed. */
+/* Closest thing in junit to executable name is 'classname'. */
+#if _FILE_OFFSET_BITS == 64
+#define TEST_CLASSNAME "example64"
+#else
+#define TEST_CLASSNAME "example"
+#endif
 
 #define HANDLE_TEST_RESULTS(output, result, testcase_name, is_junit_output) { \
     if (result.result == FAILED_WITH_ERROR_CODE) { \
         if (is_junit_output) { \
-            fprintf(output, "\t\t<testcase file=\"%s\" line=\"%d\" name=\"%s\">", TEST_FILENAME, result.line, testcase_name); \
+            fprintf(output, "\t\t<testcase classname=\"%s\" file=\"%s\" line=\"%d\" name=\"%s\">", TEST_CLASSNAME, TEST_FILENAME, result.line, testcase_name); \
             fprintf(output, "\n\t\t\t<failure>%s error: %d</failure>\n\t\t", result.message, result.err); \
 		} else { \
             fprintf(stderr, "%s error: %d\n", result.message, result.err); \
@@ -71,7 +78,7 @@ typedef struct test_result_s {
 		} \
     } else if (result.result == FAILED_WITHOUT_ERROR_CODE) { \
         if (is_junit_output) { \
-            fprintf(output, "\t\t<testcase file=\"%s\" line=\"%d\" name=\"%s\">", TEST_FILENAME, result.line, testcase_name); \
+            fprintf(output, "\t\t<testcase classname=\"%s\" file=\"%s\" line=\"%d\" name=\"%s\">", TEST_CLASSNAME, TEST_FILENAME, result.line, testcase_name); \
             fprintf(output, "\n\t\t\t<failure>%s</failure>\n\t\t", result.message); \
 		} else { \
             fprintf(stderr, "%s", result.message); \
@@ -79,7 +86,7 @@ typedef struct test_result_s {
         } \
     } else { \
         if (is_junit_output) { \
-            fprintf(output, "\t\t<testcase name=\"%s\">", testcase_name); \
+            fprintf(output, "\t\t<testcase classname=\"%s\" name=\"%s\">", TEST_CLASSNAME, testcase_name); \
         } else { \
             if (result.message != NULL) { \
                 if (result.extended_message != NULL) { \
