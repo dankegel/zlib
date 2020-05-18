@@ -16,6 +16,8 @@ check_ubu2004_task:
   test_script:
     - cc --version
     - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V
+  env:
+    - ZLIBTEST_FORCE_FAIL: 1
   always:
     junit_artifacts:
       path: "btmp/*-results.xml"
