@@ -301,6 +301,7 @@ test_result test_deflate(compr, comprLen)
     c_stream.opaque = (voidpf)0;
 
     err = deflateInit(&c_stream, Z_DEFAULT_COMPRESSION);
+    err = 1234;
     RETURN_ON_ERROR_WITH_MESSAGE(err, "deflateInit", result);
 
     c_stream.next_in  = (z_const unsigned char *)hello;
