@@ -27,6 +27,7 @@ const char *g_junit_ofname;
 FILE *g_junit_output;
 int g_fail_fast;
 int g_failed_test_count;
+int g_force_fail;
 
 typedef struct test_result_s {
     int         result; /* One of: SUCCESSFUL,
@@ -149,6 +150,7 @@ test_result test_sync          OF((Byte *compr, uLong comprLen,
 test_result test_dict_deflate  OF((Byte *compr, uLong comprLen));
 test_result test_dict_inflate  OF((Byte *compr, uLong comprLen,
                                    Byte *uncompr, uLong uncomprLen));
+test_result test_self          OF((void));
 int  main                      OF((int argc, char *argv[]));
 
 
@@ -657,7 +659,20 @@ test_result test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
 }
 
 /* ===========================================================================
- * Usage:  example [--fail_fast][--junit results.xml] [output.gz]
+ * Optionally test fault injection.
+ */
+test_result test_self()
+{
+    int err = Z_OK;
+    if (g_force_fail)
+        err = 54321;
+    CHECK_ERR(err, "forced");
+
+    RETURN_SUCCESS(NULL, NULL);
+}
+
+/* ===========================================================================
+ * Usage:  example [--fail_fast][--force_fail][--junit results.xml] [output.gz]
  */
 
 int main(argc, argv)
@@ -696,6 +711,7 @@ int main(argc, argv)
      */
     g_junit_ofname = getenv("ZLIBTEST_JUNIT");
     g_fail_fast = getenv("ZLIBTEST_FAIL_FAST") && atoi(getenv("ZLIBTEST_FAIL_FAST"));
+    g_force_fail = getenv("ZLIBTEST_FORCE_FAIL") && atoi(getenv("ZLIBTEST_FORCE_FAIL"));
     while (next_argv_index < argc && !strncmp(argv[next_argv_index], "--", 2)) {
         if (strcmp(argv[next_argv_index], "--junit") == 0) {
             next_argv_index++;
@@ -707,6 +723,9 @@ int main(argc, argv)
             next_argv_index++;
         } else if (strcmp(argv[next_argv_index], "--fail_fast") == 0) {
             g_fail_fast = 1;
+            next_argv_index++;
+        } else if (strcmp(argv[next_argv_index], "--force_fail") == 0) {
+            g_force_fail = 1;
             next_argv_index++;
         } else {
             fprintf(stderr, "Unrecognized option %s\n", argv[next_argv_index]);
@@ -723,6 +742,9 @@ int main(argc, argv)
         fprintf(g_junit_output, "<testsuites>\n");
         fprintf(g_junit_output, "\t<testsuite name=\"zlib example suite\">\n");
     }
+
+    result = test_self();
+    handle_test_results(result, "self");
 
 #ifndef Z_SOLO
     result = test_compress(compr, comprLen, uncompr, uncomprLen);
