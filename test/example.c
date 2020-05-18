@@ -80,12 +80,14 @@ void handle_test_results(result, testcase_name)
     z_const char* testcase_name;
 {
     /* XML output */
+    /* github needs file relative to source root.  FIXME: don't hardcode. */
+    const char *file = "test/example.c";
     if (g_junit_output != NULL) {
         if (result.result == FAILED_WITH_ERROR_CODE) {
-            fprintf(g_junit_output, "\t\t<testcase name=\"%s\" file=\"%s\" line=\"%d\">", testcase_name, __FILE__, result.line_number);
+            fprintf(g_junit_output, "\t\t<testcase name=\"%s\" file=\"%s\" line=\"%d\">", testcase_name, file, result.line_number);
             fprintf(g_junit_output, "\n\t\t\t<failure>%s error: %d</failure>\n\t\t", result.message, result.error_code);
         } else if (result.result == FAILED_WITHOUT_ERROR_CODE) {
-            fprintf(g_junit_output, "\t\t<testcase name=\"%s\" file=\"%s\" line=\"%d\">", testcase_name, __FILE__, result.line_number);
+            fprintf(g_junit_output, "\t\t<testcase name=\"%s\" file=\"%s\" line=\"%d\">", testcase_name, file, result.line_number);
             fprintf(g_junit_output, "\n\t\t\t<failure>%s", result.message);
             if (result.extended_message != NULL)
                 fprintf(g_junit_output, "%s", result.extended_message);
