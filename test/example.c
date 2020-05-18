@@ -23,6 +23,11 @@
 #define FAILED_WITH_ERROR_CODE     0
 #define FAILED_WITHOUT_ERROR_CODE -1
 
+const char *g_junit_ofname;
+FILE *g_junit_output;
+int g_fail_fast;
+int g_failed_test_count;
+
 typedef struct test_result_s {
     int         result; /* One of: SUCCESSFUL,
                            FAILED_WITH_ERROR_CODE, or
@@ -64,57 +69,52 @@ char string_buffer[STRING_BUFFER_SIZE];
     return result; \
 }
 
-void handle_test_results OF((FILE* output, test_result result, z_const char* testcase_name, int is_junit_output, int* failed_test_count));
+void handle_test_results OF((test_result result, z_const char* testcase_name));
 
-void handle_test_results(output, result, testcase_name, is_junit_output, failed_test_count)
-    FILE* output;
+void handle_test_results(result, testcase_name)
     test_result result;
     z_const char* testcase_name;
-    int is_junit_output;
-    int* failed_test_count;
 {
-    if (is_junit_output) {
-        fprintf(output, "\t\t<testcase name=\"%s\">", testcase_name);
+    if (g_junit_output) {
+        fprintf(g_junit_output, "\t\t<testcase name=\"%s\">", testcase_name);
     }
 
     if (result.result == FAILED_WITH_ERROR_CODE) {
-        (*failed_test_count)++;
-        if (is_junit_output) {
-            fprintf(output, "\n\t\t\t<failure file=\"%s\" line=\"%d\">%s error: %d</failure>\n\t\t", __FILE__, result.line_number, result.message, result.error_code);
-        } else {
-            fprintf(stderr, "%s error: %d\n", result.message, result.error_code);
-            exit(1);
+        g_failed_test_count++;
+        if (g_junit_output) {
+            fprintf(g_junit_output, "\n\t\t\t<failure file=\"%s\" line=\"%d\">%s error: %d</failure>\n\t\t", __FILE__, result.line_number, result.message, result.error_code);
         }
+        fprintf(stderr, "%s error: %d\n", result.message, result.error_code);
+        if (g_fail_fast)
+            exit(1);
     } else if (result.result == FAILED_WITHOUT_ERROR_CODE) {
-        (*failed_test_count)++;
-        if (is_junit_output) {
-            fprintf(output, "\n\t\t\t<failure file=\"%s\" line=\"%d\">%s", __FILE__, result.line_number, result.message);
+        g_failed_test_count++;
+        if (g_junit_output) {
+            fprintf(g_junit_output, "\n\t\t\t<failure file=\"%s\" line=\"%d\">%s", __FILE__, result.line_number, result.message);
             if (result.extended_message != NULL) {
-                fprintf(output, "%s", result.extended_message);
+                fprintf(g_junit_output, "%s", result.extended_message);
             }
-            fprintf(output, "</failure>\n\t\t");
-        } else {
-            fprintf(stderr, "%s", result.message);
-            if (result.extended_message != NULL) {
-                fprintf(stderr, "%s", result.extended_message);
-            }
-            fprintf(stderr, "\n");
-            exit(1);
+            fprintf(g_junit_output, "</failure>\n\t\t");
         }
+        fprintf(stderr, "%s", result.message);
+        if (result.extended_message != NULL) {
+            fprintf(stderr, "%s", result.extended_message);
+        }
+        fprintf(stderr, "\n");
+        if (g_fail_fast)
+            exit(1);
     } else {
-        if (!is_junit_output) {
-            if (result.message != NULL) {
-                if (result.extended_message != NULL) {
-                    fprintf(stderr, "%s%s\n", result.message, result.extended_message);
-                } else {
-                    fprintf(stderr, "%s", result.message);
-                }
+        if (result.message != NULL) {
+            if (result.extended_message != NULL) {
+                fprintf(stderr, "%s%s\n", result.message, result.extended_message);
+            } else {
+                fprintf(stderr, "%s", result.message);
             }
         }
     }
 
-    if (is_junit_output) {
-        fprintf(output, "</testcase>\n");
+    if (g_junit_output) {
+        fprintf(g_junit_output, "</testcase>\n");
     }
 }
 
@@ -643,7 +643,7 @@ test_result test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
 }
 
 /* ===========================================================================
- * Usage:  example [--junit results.xml] [output.gz  [input.gz]]
+ * Usage:  example [--junit results.xml][--fail_fast] [output.gz  [input.gz]]
  */
 
 int main(argc, argv)
@@ -655,10 +655,7 @@ int main(argc, argv)
     uLong uncomprLen = comprLen;
     static const char* myVersion = ZLIB_VERSION;
     test_result result;
-    int is_junit_output = 0;
-    FILE* output = stdout;
     int next_argv_index = 1;
-    int failed_test_count = 0;
 
     if (zlibVersion()[0] != myVersion[0]) {
         fprintf(stderr, "incompatible zlib version\n");
@@ -684,64 +681,77 @@ int main(argc, argv)
     (void)argc;
     (void)argv;
 #else
-    if (argc > 1) {
-        if (strcmp(argv[1], "--junit") == 0) {
-            if (argc <= 2) {
-                fprintf(stderr, "--junit flag requires an output file parameter, like --junit output.xml");
+    /* If an option is specified both by an environment variable and by
+     * a flag, the latter takes precedence.
+     */
+    g_junit_ofname = getenv("ZLIBTEST_JUNIT");
+    g_fail_fast = getenv("ZLIBTEST_FAIL_FAST") && atoi(getenv("ZLIBTEST_FAIL_FAST"));
+    while (next_argv_index < argc && !strncmp(argv[next_argv_index], "--", 2)) {
+        if (strcmp(argv[next_argv_index], "--junit") == 0) {
+            next_argv_index++;
+            if (argc <= next_argv_index) {
+                fprintf(stderr, "--junit flag requires an output file parameter, like --junit output.xml\n");
                 exit(1);
             }
-            next_argv_index += 2;
-            is_junit_output = 1;
-
-            output = fopen(argv[2], "w+");
-            if (!output) {
-                fprintf(stderr, "Could not open junit file");
-                exit(1);
-            }
-            fprintf(output, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
-            fprintf(output, "<testsuites>\n");
-            fprintf(output, "\t<testsuite name=\"zlib example suite\">\n");
+            g_junit_ofname = argv[next_argv_index];
+            next_argv_index++;
+        } else if (strcmp(argv[next_argv_index], "--fail_fast") == 0) {
+            g_fail_fast = 1;
+            next_argv_index++;
+        } else {
+            fprintf(stderr, "Unrecognized option %s\n", argv[next_argv_index]);
+            exit(1);
         }
+    }
+    if (g_junit_ofname) {
+        g_junit_output = fopen(g_junit_ofname, "w+");
+        if (!g_junit_output) {
+            fprintf(stderr, "Could not open junit file %s\n", g_junit_ofname);
+            exit(1);
+        }
+        fprintf(g_junit_output, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
+        fprintf(g_junit_output, "<testsuites>\n");
+        fprintf(g_junit_output, "\t<testsuite name=\"zlib example suite\">\n");
     }
 
     result = test_compress(compr, comprLen, uncompr, uncomprLen);
-    handle_test_results(output, result, "compress", is_junit_output, &failed_test_count);
+    handle_test_results(result, "compress");
 	
     result = test_gzio((argc > next_argv_index ? argv[next_argv_index++] : TESTFILE),
                        uncompr, uncomprLen);
-    handle_test_results(output, result, "gzio", is_junit_output, &failed_test_count);
+    handle_test_results(result, "gzio");
 #endif
 
     result = test_deflate(compr, comprLen);
-    handle_test_results(output, result, "deflate", is_junit_output, &failed_test_count);
+    handle_test_results(result, "deflate");
     result = test_inflate(compr, comprLen, uncompr, uncomprLen);
-    handle_test_results(output, result, "inflate", is_junit_output, &failed_test_count);
+    handle_test_results(result, "inflate");
 
     result = test_large_deflate(compr, comprLen, uncompr, uncomprLen);
-    handle_test_results(output, result, "large deflate", is_junit_output, &failed_test_count);
+    handle_test_results(result, "large deflate");
     result = test_large_inflate(compr, comprLen, uncompr, uncomprLen);
-    handle_test_results(output, result, "large inflate", is_junit_output, &failed_test_count);
+    handle_test_results(result, "large inflate");
 
     result = test_flush(compr, &comprLen);
-    handle_test_results(output, result, "flush", is_junit_output, &failed_test_count);
+    handle_test_results(result, "flush");
     result = test_sync(compr, comprLen, uncompr, uncomprLen);
-    handle_test_results(output, result, "sync", is_junit_output, &failed_test_count);
+    handle_test_results(result, "sync");
     comprLen = uncomprLen;
 
     result = test_dict_deflate(compr, comprLen);
-    handle_test_results(output, result, "dict deflate", is_junit_output, &failed_test_count);
+    handle_test_results(result, "dict deflate");
     result = test_dict_inflate(compr, comprLen, uncompr, uncomprLen);
-    handle_test_results(output, result, "dict inflate", is_junit_output, &failed_test_count);
+    handle_test_results(result, "dict inflate");
 
-    if (is_junit_output) {
-        fprintf(output, "\t</testsuite>\n");
-        fprintf(output, "</testsuites>");
-        fclose(output);
+    if (g_junit_output) {
+        fprintf(g_junit_output, "\t</testsuite>\n");
+        fprintf(g_junit_output, "</testsuites>");
+        fclose(g_junit_output);
     }
     free(compr);
     free(uncompr);
 
-    if (failed_test_count) {
+    if (g_failed_test_count) {
         return 1;
     }
     return 0;
