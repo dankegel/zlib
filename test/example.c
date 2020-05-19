@@ -671,7 +671,7 @@ test_result test_self(compr, comprLen)
 {
     int err = Z_OK;
     if (g_force_fail)
-        err = 54321;
+        err = 654321;
     CHECK_ERR(err, "forced");
 
     RETURN_SUCCESS(NULL, NULL);
