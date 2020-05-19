@@ -735,7 +735,6 @@ int main(argc, argv)
             exit(1);
         }
         fprintf(g_junit_output, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
-        fprintf(g_junit_output, "<testsuites>\n");
         fprintf(g_junit_output, "\t<testsuite name=\"zlib example suite\">\n");
     }
 
@@ -774,7 +773,6 @@ int main(argc, argv)
 
     if (g_junit_output) {
         fprintf(g_junit_output, "\t</testsuite>\n");
-        fprintf(g_junit_output, "</testsuites>");
         fclose(g_junit_output);
     }
     free(compr);
