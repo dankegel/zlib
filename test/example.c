@@ -151,6 +151,7 @@ test_result test_dict_deflate  OF((Byte *compr, uLong comprLen));
 test_result test_dict_inflate  OF((Byte *compr, uLong comprLen,
                                    Byte *uncompr, uLong uncomprLen));
 test_result test_self          OF((void));
+test_result test_self_verbose  OF((void));
 int  main                      OF((int argc, char *argv[]));
 
 
@@ -667,8 +668,19 @@ test_result test_self()
     if (g_force_fail)
         err = 54321;
     CHECK_ERR(err, "forced");
-
     RETURN_SUCCESS(NULL, NULL);
+}
+
+/* ===========================================================================
+ * Optionally test fault injection.
+ */
+test_result test_self_verbose()
+{
+    if (g_force_fail) {
+        RETURN_FAILURE("forced: ", "by --force_failure");
+    } else {
+        RETURN_SUCCESS(NULL, NULL);
+    }
 }
 
 /* ===========================================================================
@@ -745,6 +757,8 @@ int main(argc, argv)
 
     result = test_self();
     handle_test_results(result, "self");
+    result = test_self_verbose();
+    handle_test_results(result, "self verbose");
 
 #ifndef Z_SOLO
     result = test_compress(compr, comprLen, uncompr, uncomprLen);
