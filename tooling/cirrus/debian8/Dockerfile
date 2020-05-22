@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM debian:8
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y cmake gcc libc6-dev ninja-build make && \
