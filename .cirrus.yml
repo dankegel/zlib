@@ -2,8 +2,7 @@ check_ubu1804_task:
   container:
     dockerfile: tooling/cirrus/ubu1804/Dockerfile
   test_script:
-    - cc --version
-    - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V
+    - sh tooling/test-cmake.sh && sh tooling/pkgcheck.sh
   always:
     junit_artifacts:
       path: "btmp/*-results.xml"
@@ -14,8 +13,7 @@ check_ubu2004_task:
   container:
     dockerfile: tooling/cirrus/ubu2004/Dockerfile
   test_script:
-    - cc --version
-    - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V
+    - sh tooling/test-cmake.sh && sh tooling/pkgcheck.sh
   always:
     junit_artifacts:
       path: "btmp/*-results.xml"
@@ -28,9 +26,7 @@ check_mac_task:
   install_script:
     - brew install ninja
   test_script:
-    - cc --version
-    - ninja --version
-    - mkdir btmp; cd btmp; cmake -G Ninja .. && cmake --build . && ctest -V
+    - sh tooling/test-cmake.sh && sh tooling/pkgcheck.sh
   always:
     junit_artifacts:
       path: "btmp/*-results.xml"
@@ -43,8 +39,7 @@ check_bsd_task:
   install_script:
     - pkg install -y gcc cmake ninja
   test_script:
-    - cc --version
-    - mkdir btmp; cd btmp; cmake -G Ninja .. && ninja && ctest -V
+    - sh tooling/test-cmake.sh && sh tooling/pkgcheck.sh
   always:
     junit_artifacts:
       path: "btmp/*-results.xml"
