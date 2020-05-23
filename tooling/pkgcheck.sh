@@ -4,30 +4,27 @@ set -ex
 
 # Tell GNU's ld etc. to use Jan 1 1970 when embedding timestamps
 export SOURCE_DATE_EPOCH=0
-
-case $(uname) in
-Darwin)
-  # Tell Apple's ar etc. to use zero timestamps
-  export ZERO_AR_DATE=1
-  # Tell configure which compiler etc. to use to match cmake
-  CONFIG_CC="$(xcrun --find gcc || echo gcc)"
-  CONFIG_CFLAGS="-DNDEBUG -O3 -isysroot $(xcrun --show-sdk-path)"
-  # Tell configure to pad the executable the same way cmake will
-  CONFIG_LDFLAGS=" -Wl,-headerpad_max_install_names"
-  ;;
-*)
-  CONFIG_CC=""
-  CONFIG_CFLAGS=""
-  CONFIG_LDFLAGS=""
-  ;;
-esac
+# Tell Apple's ar etc. to use zero timestamps
+export ZERO_AR_DATE=1
 
 # Original build system
 rm -rf btmp1 pkgtmp1
 mkdir btmp1 pkgtmp1
 export DESTDIR=$(pwd)/pkgtmp1
 cd btmp1
-  CFLAGS="$CONFIG_CFLAGS" LDFLAGS="$CONFIG_LDFLAGS" CC="$CONFIG_CC" ../configure
+  case $(uname) in
+  Darwin)
+    # Tell configure which compiler etc. to use to match cmake
+    # Tell configure to pad the executable the same way cmake will
+    CC="$(xcrun --find gcc || echo gcc)" \
+    CFLAGS="-DNDEBUG -O3 -isysroot $(xcrun --show-sdk-path)" \
+    LDFLAGS="-Wl,-headerpad_max_install_names" \
+    ../configure
+    ;;
+  *)
+    ../configure
+    ;;
+  esac
   make
   make install
 cd ..
