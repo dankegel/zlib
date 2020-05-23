@@ -21,6 +21,22 @@ cd btmp1
     LDFLAGS="-Wl,-headerpad_max_install_names" \
     ../configure
     ;;
+  FreeBSD)
+    # 1) configure really doesn't like falling back to cc
+    # 2) Force same CC for configure and clang
+    if clang --version
+    then
+        export CC=clang
+        ../configure
+    elif gcc --version
+    then
+        export CC=gcc
+        ../configure
+    else
+        # will probably fail
+        ../configure
+    fi
+    ;;
   *)
     ../configure
     ;;
