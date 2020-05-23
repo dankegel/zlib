@@ -96,11 +96,6 @@ if(NOT HAVE_FSEEKO)
     add_definitions(-DNO_FSEEKO)
 endif()
 
-#
-# Check for unistd.h
-#
-check_include_file(unistd.h HAVE_UNISTD_H)
-
 if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
     add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
@@ -254,14 +249,21 @@ if(NOT CYGWIN)
     set_target_properties(zlib PROPERTIES VERSION ${ZLIB_FULL_VERSION})
 endif()
 
+if(APPLE)
+   set_target_properties(zlib PROPERTIES
+       INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+      )
+elseif (UNIX)
+     # Makefile.in uses -lc...
+     set(LDSHAREDLIBC -lc)
+     target_link_libraries(zlib ${LDSHAREDLIBC})
+endif()
+
 if(UNIX)
     # On unix-like platforms the library is almost always called libz
    set_target_properties(zlib zlibstatic PROPERTIES OUTPUT_NAME z)
    if(NOT APPLE)
      set_target_properties(zlib PROPERTIES LINK_FLAGS "-Wl,--version-script,\"${CMAKE_CURRENT_SOURCE_DIR}/zlib.map\"")
-     # Makefile.in uses -lc...
-     set(LDSHAREDLIBC -lc)
-     target_link_libraries(zlib ${LDSHAREDLIBC})
    endif()
 elseif(BUILD_SHARED_LIBS AND WIN32)
     # Creates zlib1.dll when building shared library version
