@@ -17,7 +17,7 @@ Darwin)
   ;;
 *)
   CONFIG_CC=""
-  CONFIG_CFLAGS="-DNDEBUG -O3"
+  CONFIG_CFLAGS=""
   CONFIG_LDFLAGS=""
   ;;
 esac
