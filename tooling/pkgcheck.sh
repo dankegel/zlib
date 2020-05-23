@@ -22,8 +22,10 @@ cd btmp1
     ../configure
     ;;
   FreeBSD)
-    # 1) configure really doesn't like falling back to cc
-    # 2) Force same CC for configure and clang
+    # 1) tell configure to tell ar to be deterministic?
+    # 2) configure fails with cc, so use clang or gcc
+    # 3) Force same CC for configure and clang
+    #export ARFLAGS="Drc"
     if clang --version
     then
         export CC=clang
@@ -63,6 +65,12 @@ Darwin)
   dylib2=$(find pkgtmp2 -name '*.dylib*' -type f)
   dd conv=notrunc if=/dev/zero of=$dylib1 skip=1337 count=16
   dd conv=notrunc if=/dev/zero of=$dylib2 skip=1337 count=16
+  ;;
+FreeBSD)
+  # I had trouble passing -D to the ar inside CMakeLists.txt,
+  # so punt and unpack the archive before comparing.
+  cd pkgtmp1; ar x usr/local/lib/libz.a; rm usr/local/lib/libz.a; cd ..
+  cd pkgtmp2; ar x usr/local/lib/libz.a; rm usr/local/lib/libz.a; cd ..
   ;;
 esac
 
