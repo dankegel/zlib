@@ -35,6 +35,8 @@ typedef struct test_result_s {
 
 #define STRING_BUFFER_SIZE 100
 char string_buffer[STRING_BUFFER_SIZE];
+int g_fail_fast;
+char g_test_class[STRING_BUFFER_SIZE] = "default";
 
 #define CHECK_ERR(_error_code, _message) { \
     if (_error_code != Z_OK) { \
@@ -77,14 +79,12 @@ void handle_stdout_test_results(result, testcase_name)
 {
     if (result.result == FAILED_WITH_ERROR_CODE) {
         fprintf(stderr, "%s error: %d\n", result.message, result.error_code);
-        exit(1);
     } else if (result.result == FAILED_WITHOUT_ERROR_CODE) {
         fprintf(stderr, "%s", result.message);
         if (result.extended_message != NULL) {
             fprintf(stderr, "%s", result.extended_message);
         }
         fprintf(stderr, "\n");
-        exit(1);
     } else {
         if (result.message != NULL) {
             if (result.extended_message != NULL) {
@@ -101,19 +101,27 @@ void handle_junit_test_results(output, result, testcase_name)
     test_result result;
     const char* testcase_name;
 {
-    fprintf(output, "\t\t<testcase name=\"%s\">", testcase_name);
-
+    /* github.com/cirruslabs/cirrus-ci-annotations/blob/master/testdata/junit/PythonXMLRunner.xml
+     * suggests how to encode classname, file, and line to get
+     * annotations to appear properly on github.
+     */
     if (result.result == FAILED_WITH_ERROR_CODE) {
-        fprintf(output, "\n\t\t\t<failure file=\"%s\" line=\"%d\">%s error: %d</failure>\n\t\t", __FILE__, result.line_number, result.message, result.error_code);
+        fprintf(output,
+            "\t\t<testcase classname=\"%s\" name=\"%s\" file=\"%s\" line=\"%d\">\n"
+            "\t\t\t<failure>%s: error %d</failure>\n"
+            "\t\t</testcase>\n",
+            g_test_class, testcase_name, __FILE__, result.line_number, result.message,
+            result.error_code);
     } else if (result.result == FAILED_WITHOUT_ERROR_CODE) {
-        fprintf(output, "\n\t\t\t<failure file=\"%s\" line=\"%d\">%s", __FILE__, result.line_number, result.message);
-        if (result.extended_message != NULL) {
-            fprintf(output, "%s", result.extended_message);
-        }
-        fprintf(output, "</failure>\n\t\t");
+        fprintf(output,
+            "\t\t<testcase classname=\"%s\" name=\"%s\" file=\"%s\" line=\"%d\">\n"
+            "\t\t\t<failure>%s%s</failure>\n"
+            "\t\t</testcase>\n",
+            g_test_class, testcase_name, __FILE__, result.line_number, result.message,
+            (result.extended_message ? result.extended_message : ""));
+    } else {
+        fprintf(output, "\t\t<testcase name=\"%s\"></testcase>\n", testcase_name);
     }
-
-    fprintf(output, "</testcase>\n");
 }
 
 void handle_test_results(output, result, testcase_name, is_junit_output, failed_test_count)
@@ -123,14 +131,14 @@ void handle_test_results(output, result, testcase_name, is_junit_output, failed_
     int is_junit_output;
     int* failed_test_count;
 {
-    if (result.result == FAILED_WITH_ERROR_CODE || result.result == FAILED_WITHOUT_ERROR_CODE) {
-        (*failed_test_count)++;
-    }
-
     if (is_junit_output) {
         handle_junit_test_results(output, result, testcase_name);
-    } else {
-        handle_stdout_test_results(result, testcase_name);
+    }
+    handle_stdout_test_results(result, testcase_name);
+    if (result.result == FAILED_WITH_ERROR_CODE || result.result == FAILED_WITHOUT_ERROR_CODE) {
+        (*failed_test_count)++;
+        if (g_fail_fast)
+            exit(1);
     }
 }
 
@@ -189,6 +197,7 @@ test_result test_compress      OF((Byte *compr, uLong comprLen,
                                    Byte *uncompr, uLong uncomprLen));
 test_result test_gzio          OF((const char *fname,
                                    Byte *uncompr, uLong uncomprLen));
+test_result test_force_fail    OF((int force_fail));
 
 /* ===========================================================================
  * Test compress() and uncompress()
@@ -295,6 +304,20 @@ test_result test_gzio(fname, uncompr, uncomprLen)
 
     RETURN_SUCCESS(NULL, NULL);
 #endif
+}
+
+/* ===========================================================================
+ * Optionally test fault injection.
+ */
+test_result test_force_fail(force_fail)
+    int force_fail;
+{
+    int err = Z_OK;
+    if (force_fail)
+        err = 54321;
+    CHECK_ERR(err, "forced");
+
+    RETURN_SUCCESS(NULL, NULL);
 }
 
 #endif /* Z_SOLO */
@@ -651,7 +674,7 @@ test_result test_dict_inflate(compr, comprLen, uncompr, uncomprLen)
 }
 
 /* ===========================================================================
- * Usage:  example [--junit results.xml] [output.gz  [input.gz]]
+ * Usage:  example [--fail_fast][--force_fail][--junit results.xml] [output.gz [input.gz]]
  */
 
 int main(argc, argv)
@@ -668,6 +691,7 @@ int main(argc, argv)
     FILE* output = stdout;
     int next_argv_index = 1;
     int failed_test_count = 0;
+    int force_fail = 0;
 
     if (zlibVersion()[0] != myVersion[0]) {
         fprintf(stderr, "incompatible zlib version\n");
@@ -694,15 +718,26 @@ int main(argc, argv)
     (void)argv;
 #else
     output_file_path = getenv("ZLIB_JUNIT_OUTPUT_FILE");
-    if (argc > 1) {
-        if (strcmp(argv[1], "--junit") == 0) {
-            if (argc <= 2) {
+    force_fail = getenv("ZLIB_FORCE_FAIL") && atoi(getenv("ZLIB_FORCE_FAIL"));
+    g_fail_fast = getenv("ZLIB_FAIL_FAST") && atoi(getenv("ZLIB_FAIL_FAST"));
+    while (next_argv_index < argc && !strncmp(argv[next_argv_index], "--", 2)) {
+        if (strcmp(argv[next_argv_index], "--junit") == 0) {
+            next_argv_index++;
+            if (argc <= next_argv_index) {
                 fprintf(stderr, "--junit flag requires an output file parameter, like --junit output.xml");
                 exit(1);
             }
-            next_argv_index += 2;
-
-            output_file_path = argv[2];
+            output_file_path = argv[next_argv_index];
+            next_argv_index++;
+        } else if (strcmp(argv[next_argv_index], "--fail_fast") == 0) {
+            g_fail_fast = 1;
+            next_argv_index++;
+        } else if (strcmp(argv[next_argv_index], "--force_fail") == 0) {
+            force_fail = 1;
+            next_argv_index++;
+        } else {
+            fprintf(stderr, "Unrecognized option %s\n", argv[next_argv_index]);
+            exit(1);
         }
     }
     if (output_file_path) {
@@ -710,8 +745,23 @@ int main(argc, argv)
         is_junit_output = 1;
         output = fopen(output_file_path, "w+");
         if (!output) {
-            fprintf(stderr, "Could not open junit file");
+            fprintf(stderr, "Could not open junit file %s\n", output_file_path);
             exit(1);
+        } else {
+            /* If run by CMakeLists.txt's JUNIT option, path is FOO/$exe-junit.xml.
+             * Extract $exe and pass to handle_junit_test_results so github error
+             * annotations show the name of the executable causing each error.
+             */
+            const char *p = strrchr(output_file_path, '/');
+            if (p) {
+                p++;   /* skip past slash */
+                const char *q = strrchr(p, '-');
+                int len = q - p;
+                if (!strcmp(q, "-junit.xml") && (len < sizeof(g_test_class))) {
+                    strncpy(g_test_class, p, len);
+                    g_test_class[len] = 0;
+                }
+            }
         }
         fprintf(output, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
         fprintf(output, "<testsuites>\n");
@@ -724,6 +774,9 @@ int main(argc, argv)
     result = test_gzio((argc > next_argv_index ? argv[next_argv_index++] : TESTFILE),
                        uncompr, uncomprLen);
     handle_test_results(output, result, "gzio", is_junit_output, &failed_test_count);
+
+    result = test_force_fail(force_fail);
+    handle_test_results(output, result, "force fail", is_junit_output, &failed_test_count);
 #endif
 
     result = test_deflate(compr, comprLen);
